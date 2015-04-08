@@ -6,42 +6,28 @@
 
 (define-language 
   lambdaPHP
-  (env ((x loc) ...))
-  (sto ((loc val) ...))
+  (scope ((x val) ...))
   (loc natural)
   (prim boolean number string null)
   (val prim (ref loc))
   (lbl x)
   (e val
      x
-     (set! e e)
-     (alloc e)
-     (deref e)
+     (set e e)
      (begin e e ...)
      (label lbl e)
      (break lbl e))
   (H hole
-     (set! H e)
-     (set! val H)
-     (alloc H)
-     (deref H)
+     (set H e)
+     (set val H)
      (begin val ... H e ...))
   (E hole
-     (set! E e)
-     (set! val E)
-     (alloc E)
-     (deref E)
+     (set E e)
+     (set val E)
      (begin val ... E e ...)
      (label lbl E)
      (break lbl E))
   ((f g x y z) variable-not-otherwise-mentioned))
-
-(define-metafunction 
-  lambdaPHP
-  alloc-def : val sto -> (loc sto)
-  [(alloc-def val_n ((loc val) ...))
-   ,(term-let ([loc_n (+ 1 (apply max (term (0 loc ...))))])
-              (term (loc_n ((loc_n val_n) (loc val) ...))))])
 
 (define-metafunction
   lambdaPHP
@@ -77,20 +63,11 @@
 (define eval-lambdaPHP
   (reduction-relation
     lambdaPHP
-    (--> (((loc_1 val_1) ... (loc val_old) (loc_3 val_3) ...)
-          (in-hole E (set! (ref loc) val_new)))
-         (((loc_1 val_1) ... (loc val_new) (loc_3 val_3) ...)
-          (in-hole E (ref loc)))
+    (--> (((x_old val_old) ...)
+          (in-hole E (set x_new val_new)))
+         (((x_new val_new) (x_old val_old) ...)
+          val_new)
          "E-Assign")
-    (--> (sto_1 (in-hole E (alloc val)))
-         (sto_2 (in-hole E (ref loc)))
-         "E-Alloc"
-         (where (loc sto_2) (alloc-def val sto_1)))
-    (--> (((loc_1 val_1) ... (loc_2 val_2) (loc_3 val_3) ...)
-          (in-hole E (deref (ref loc_2))))
-         (((loc_1 val_1) ... (loc_2 val_2) (loc_3 val_3) ...)
-          (in-hole E val_2))
-         "E-Deref")
     (==> (begin val ... val_r)
          val_r
          "E-BeginResult")
@@ -108,7 +85,7 @@
          val
          "E-Label-Pop-NoBreak")
     with
-    [(--> (sto (in-hole E e_1)) (sto (in-hole E e_2)))
+    [(--> (scope (in-hole E e_1)) (scope (in-hole E e_2)))
      (==> e_1 e_2)]))
 
 (define-syntax trace
