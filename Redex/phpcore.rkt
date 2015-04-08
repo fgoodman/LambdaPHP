@@ -10,20 +10,32 @@
   (loc natural)
   (prim boolean number string null)
   (val prim (ref loc))
+  (lbl x)
   (e val
      x
      (let ([x e] ...) e)
      (set! e e)
      (alloc e)
      (deref e)
-     (begin e e ...))
+     (begin e e ...)
+     (label lbl e)
+     (break lbl e))
+  (H hole
+     (let ([x val] ... [y H] [z e] ...) e)
+     (set! H e)
+     (set! val H)
+     (alloc H)
+     (deref H)
+     (begin val ... H e ...))
   (E hole
      (let ([x val] ... [y E] [z e] ...) e)
      (set! E e)
      (set! val E)
      (alloc E)
      (deref E)
-     (begin val ... E e ...))
+     (begin val ... E e ...)
+     (label lbl E)
+     (break lbl E))
   ((f g x y z) variable-not-otherwise-mentioned))
 
 (define-metafunction 
@@ -43,6 +55,10 @@
 (define-metafunction
   lambdaPHP
   subst : x any any -> any
+  [(subst x_1 any_1 (label any_2 e_2))
+   (label any_2 (subst x_1 any_1 e_2))]
+   [(subst x_1 any_1 (break any_2 e_2))
+   (break any_2 (subst x_1 any_1 e_2))]
   [(subst y any_1 (let ([x_2 e_2] ...
                         [y e_y]
                         [x_3 e_3] ...)
@@ -64,6 +80,10 @@
 (define-metafunction
   lambdaPHP
   subst-vars : (x any) ... any -> any
+  [(subst-vars (x_1 any_1) ... (label x_2 any_2))
+   (label x_2 (subst-vars (x_1 any_1) ... any_2))]
+  [(subst-vars (x_1 any_1) ... (break x_2 any_2))
+   (break x_2 (subst-vars (x_1 any_1) ... any_2))]
   [(subst-vars (x_1 any_1) x_1) any_1]
   [(subst-vars (x_1 any_1) any_2) any_2]
   [(subst-vars (x_1 any_1) (x_2 any_2) ... any_3)
@@ -93,6 +113,19 @@
     (==> (begin val ... val_r)
          val_r
          "E-BeginResult")
+    (==> (label lbl (in-hole H (break lbl val)))
+         val
+         "E-Label-Match")
+    (==> (label lbl_1 (in-hole H (break lbl_2 val)))
+         (break lbl_2 val)
+         "E-Label-Pop"
+         (side-condition (not (equal? (term lbl_1) (term lbl_2)))))
+    (==> (break lbl_1 (in-hole H (break lbl_2 val)))
+         (break lbl_2 val)
+         "E-Break-Break")
+    (==> (label lbl_1 val)
+         val
+         "E-Label-Pop-NoBreak")
     with
     [(--> (sto (in-hole E e_1)) (sto (in-hole E e_2)))
      (==> e_1 e_2)]))
