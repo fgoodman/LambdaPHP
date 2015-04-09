@@ -10,21 +10,22 @@
   (envs (env ...))
   (sto ((loc val) ...))
   (loc natural)
-  (prim boolean number string null)
+  (prim (lambda (x ...) e) boolean number string null)
   (val prim)
   (lbl x)
   (e val
      x
+     (e e ...)
      (set e e)
      (begin e e ...)
      (label lbl e)
      (break lbl e))
   (H hole
-     (set H e)
+     (val ... H e ...)
      (set val H)
      (begin E e ...))
   (E hole
-     (set E e)
+     (val ... E e ...)
      (set val E)
      (begin E e ...)
      (label lbl E)
@@ -45,8 +46,23 @@
    (label any_2 (subst x_1 any_1 e_2))]
    [(subst x_1 any_1 (break any_2 e_2))
    (break any_2 (subst x_1 any_1 e_2))]
+  [(subst x_1 any_1 (lambda (x_2 ... x_1 x_3 ...) any_2))
+   (lambda (x_2 ... x_1 x_3 ...) any_2)
+   (side-condition (not (member (term x_1) (term (x_2 ...)))))]
+  [(subst x_1 any_1 (lambda (x_2 ...) any_2))
+   ,(term-let ([(x_new ...)
+                (variables-not-in
+                 (term (x_1 any_1 any_2))
+                 (term (x_2 ...)))])
+              (term
+               (lambda (x_new ...)
+                 (subst x_1 any_1
+                        (subst-vars (x_2 x_new) ...
+                                    any_2)))))]
   [(subst x_1 any_1 x_1) any_1]
   [(subst x_1 any_1 x_2) x_2]
+  [(subst x_1 any_1 (any_2 ...))
+   ((subst x_1 any_1 any_2) ...)]
   [(subst x_1 any_1 any_2) any_2])
 
 (define-metafunction
@@ -57,9 +73,12 @@
   [(subst-vars (x_1 any_1) ... (break x_2 any_2))
    (break x_2 (subst-vars (x_1 any_1) ... any_2))]
   [(subst-vars (x_1 any_1) x_1) any_1]
+  [(subst-vars (x_1 any_1) (any_2 ...))
+   ((subst-vars (x_1 any_1) any_2) ...)]
   [(subst-vars (x_1 any_1) any_2) any_2]
   [(subst-vars (x_1 any_1) (x_2 any_2) ... any_3)
-   (subst-vars (x_1 any_1) (subst-vars (x_2 any_2) ... any_3))]
+   (subst-vars (x_1 any_1)
+               (subst-vars (x_2 any_2) ... any_3))]
   [(subst-vars any) any])
 
 (define genloc (let ([cnt 0]) (lambda () (begin (set! cnt (+ cnt 1)) cnt))))
@@ -73,25 +92,56 @@
          ((((x_1 loc_1) ... (x_cur loc) (x_2 loc_2) ...) env ...)
           ((loc_3 val_3) ... (loc val_new) (loc_4 val_4) ...)
           (in-hole E val_new))
-         "E-AssignNew")
+         "E-Alloc+Assign")
     (--> ((((x_1 loc_1) ...) env ...)
           ((loc_2 val_2) ...)
           (in-hole E (set x_new val_new)))
          ((((x_new loc_new) (x_1 loc_1) ...) env ...)
           ((loc_new val_new) (loc_2 val_2) ...)
           (in-hole E val_new))
-         "E-AssignOld"
+         "E-Assign"
          (where loc_new ,(genloc))
          (side-condition (not (memq (term x_new) (term (x_1 ...))))))
+    (--> ((env ...)
+          sto
+          (in-hole E ((lambda (x ...) e) val ...)))
+         ((() env ...)
+          sto
+          (in-hole E (label 0ret (subst-n (x val) ... e))))
+         "E-Beta")
+    (--> ((((x_1 loc_1) ... (x loc) (x_2 loc_2) ...) env ...)
+          ((loc_3 val_3) ... (loc val) (loc_4 val_4) ...)
+          (in-hole E x))
+         ((((x_1 loc_1) ... (x loc) (x_2 loc_2) ...) env ...)
+          ((loc_3 val_3) ... (loc val) (loc_4 val_4) ...)
+          (in-hole E val))
+         "E-Subst")
+    (--> ((((x_1 loc_1) ...) env ...)
+          sto
+          (in-hole E x))
+         ((((x_1 loc_1) ...) env ...)
+          sto
+          (in-hole E null))
+         "E-SubstNull"
+         (side-condition (not (memq (term x) (term (x_1 ...))))))
     (==> (begin val e_1 e_2 ...)
          (begin e_1 e_2 ...)
          "E-Begin")
-    (==> (begin e)
-         e
+    (==> (begin val)
+         val
          "E-BeginFinal")
     (==> (label lbl (in-hole H (break lbl val)))
          val
-         "E-Label-Match")
+         "E-Label-Match"
+         (side-condition (not (eq? (term lbl) (term 0ret)))))
+    (--> ((env_local env ...)
+          sto
+          (in-hole E (label lbl (in-hole H (break lbl val)))))
+         ((env ...)
+          sto
+          (in-hole E val))
+         "E-Label-Return"
+         (side-condition (eq? (term lbl) (term 0ret))))
     (==> (label lbl_1 (in-hole H (break lbl_2 val)))
          (break lbl_2 val)
          "E-Label-Pop"
