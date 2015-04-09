@@ -6,7 +6,10 @@
 
 (define-language 
   lambdaPHP
-  (scope ((x val) ...))
+  (env ((x loc) ...))
+  (envs (env ...))
+  (sto ((loc val) ...))
+  (loc natural)
   (prim boolean number string null)
   (val prim)
   (lbl x)
@@ -59,19 +62,32 @@
    (subst-vars (x_1 any_1) (subst-vars (x_2 any_2) ... any_3))]
   [(subst-vars any) any])
 
+(define genloc (let ([cnt 0]) (lambda () (begin (set! cnt (+ cnt 1)) cnt))))
+
 (define eval-lambdaPHP
   (reduction-relation
     lambdaPHP
-    (--> (((x_old val_old) ...)
-          (in-hole E (set x_new val_new)))
-         (((x_new val_new) (x_old val_old) ...)
+    (--> ((((x_1 loc_1) ... (x_cur loc) (x_2 loc_2) ...) env ...)
+          ((loc_3 val_3) ... (loc val_old) (loc_4 val_4) ...)
+          (in-hole E (set x_cur val_new)))
+         ((((x_1 loc_1) ... (x_cur loc) (x_2 loc_2) ...) env ...)
+          ((loc_3 val_3) ... (loc val_new) (loc_4 val_4) ...)
           (in-hole E val_new))
-         "E-Assign")
+         "E-AssignNew")
+    (--> ((((x_1 loc_1) ...) env ...)
+          ((loc_2 val_2) ...)
+          (in-hole E (set x_new val_new)))
+         ((((x_new loc_new) (x_1 loc_1) ...) env ...)
+          ((loc_new val_new) (loc_2 val_2) ...)
+          (in-hole E val_new))
+         "E-AssignOld"
+         (where loc_new ,(genloc))
+         (side-condition (not (memq (term x_new) (term (x_1 ...))))))
     (==> (begin val e_1 e_2 ...)
          (begin e_1 e_2 ...)
          "E-Begin")
-    (==> (begin val)
-         val
+    (==> (begin e)
+         e
          "E-BeginFinal")
     (==> (label lbl (in-hole H (break lbl val)))
          val
@@ -87,10 +103,10 @@
          val
          "E-Label-Pop-NoBreak")
     with
-    [(--> (scope (in-hole E e_1)) (scope (in-hole E e_2)))
+    [(--> (envs sto (in-hole E e_1)) (envs sto (in-hole E e_2)))
      (==> e_1 e_2)]))
 
 (define-syntax trace
   (syntax-rules ()
     [(_ exp)
-     (traces eval-lambdaPHP (term (() exp)))]))
+     (traces eval-lambdaPHP (term ((()) () exp)))]))
