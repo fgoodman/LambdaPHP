@@ -7,9 +7,8 @@
 (define-language 
   lambdaPHP
   (scope ((x val) ...))
-  (loc natural)
   (prim boolean number string null)
-  (val prim (ref loc))
+  (val prim)
   (lbl x)
   (e val
      x
@@ -20,14 +19,14 @@
   (H hole
      (set H e)
      (set val H)
-     (begin val ... H e ...))
+     (begin E e ...))
   (E hole
      (set E e)
      (set val E)
-     (begin val ... E e ...)
+     (begin E e ...)
      (label lbl E)
      (break lbl E))
-  ((f g x y z) variable-not-otherwise-mentioned))
+  (x variable-not-otherwise-mentioned))
 
 (define-metafunction
   lambdaPHP
@@ -66,11 +65,14 @@
     (--> (((x_old val_old) ...)
           (in-hole E (set x_new val_new)))
          (((x_new val_new) (x_old val_old) ...)
-          val_new)
+          (in-hole E val_new))
          "E-Assign")
-    (==> (begin val ... val_r)
-         val_r
-         "E-BeginResult")
+    (==> (begin val e_1 e_2 ...)
+         (begin e_1 e_2 ...)
+         "E-Begin")
+    (==> (begin val)
+         val
+         "E-BeginFinal")
     (==> (label lbl (in-hole H (break lbl val)))
          val
          "E-Label-Match")
