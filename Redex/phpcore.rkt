@@ -29,7 +29,7 @@
                        [(? string?) v])]
     [`(=== ,v_1 ,v_2) (equal? v_1 v_2)]
     [`(< ,(? number? v_1) ,(? number? v_2)) (< v_1 v_2)]
-    [`(- ,(? number? v_1) ,(? number? v_2)) (- v_1 v_2)]
+    [`(+ ,(? number? v_1) ,(? number? v_2)) (+ v_1 v_2)]
     [`(* ,(? number? v_1) ,(? number? v_2)) (* v_1 v_2)]))
                     
 (define-language 
@@ -41,14 +41,15 @@
   (prim (lambda (x ...) e) boolean number string null)
   (val prim)
   (lbl x)
-  (op < - * === to-bool)
+  (op < + * === to-bool)
   (e val
      x
      (op e ...)
      (e e ...)
      (global x)
-     (set e e)
+     (set x e)
      (if e e e)
+     (while e e)
      (begin e e ...)
      (label lbl e)
      (break lbl e))
@@ -62,7 +63,7 @@
   (E hole
      (op val ... E e ...)
      (val ... E e ...)
-     (set val E)
+     (set x E)
      (if E e e)
      (begin E e ...)
      (break lbl E)
@@ -149,7 +150,7 @@
           (in-hole E ((lambda (x ...) e) val ...)))
          ((() env ...)
           sto
-          (in-hole E (label 0ret (subst-n (x val) ... e))))
+          (in-hole E (label $ret (subst-n (x val) ... e))))
          "E-Beta")
     (--> ((((x_1 loc_1) ... (x loc) (x_2 loc_2) ...) env ...)
           ((loc_3 val_3) ... (loc val) (loc_4 val_4) ...)
@@ -195,10 +196,13 @@
     (==> (begin val)
          val
          "E-BeginFinal")
+    (==> (while e_1 e_2)
+         (if (to-bool e_1) (begin e_2 (while e_1 e_2)) null)
+         "E-While")
     (==> (label lbl (in-hole H (break lbl val)))
          val
          "E-Label-Match"
-         (side-condition (not (eq? (term lbl) (term 0ret)))))
+         (side-condition (not (eq? (term lbl) (term $ret)))))
     (--> ((env_local env ...)
           sto
           (in-hole E (label lbl (in-hole H (break lbl val)))))
@@ -206,7 +210,7 @@
           sto
           (in-hole E val))
          "E-Label-Return"
-         (side-condition (eq? (term lbl) (term 0ret))))
+         (side-condition (eq? (term lbl) (term $ret))))
     (==> (label lbl_1 (in-hole H (break lbl_2 val)))
          (break lbl_2 val)
          "E-Label-Pop"
