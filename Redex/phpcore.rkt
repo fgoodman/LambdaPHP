@@ -4,14 +4,31 @@
 
 (provide (all-defined-out))
 
-(define (lambdaPHP-delta t)
-  (define op (first t))
-  (define ra (rest t))
-  (match op
-    ['to-bool (case (first ra)
-                [(#f 0 0.0 "" "0" null) #f]
-                [else #t])]))
-
+(define lambdaPHP-delta
+  (match-lambda
+    
+    ; http://php.net/manual/en/language.types.boolean.php#language.types.boolean.casting
+    [`(to-bool ,v) (case v
+                     [(#f 0 0.0 "" "0" null) #f]
+                     [else #t])]
+    ; http://php.net/manual/en/language.types.integer.php#language.types.integer.casting
+    [`(to-int ,v) (match v
+                    [#f 0]
+                    [#t 1]
+                    [(? flonum?) (floor v)]
+                    [(? integer?) v]
+                    ; http://php.net/manual/en/language.types.string.php#language.types.string.conversion
+                    [(? string?) (error "todo")])]
+    
+    ; http://php.net/manual/en/language.types.string.php#language.types.string.casting
+    [`(to-string ,v) (match v
+                       [#t "1"]
+                       [#f ""]
+                       [(? null?) ""]
+                       [(? number?) (number->string v)]
+                       [(? string?) v])]))
+                       
+                    
 (define-language 
   lambdaPHP
   (env ((x loc) ...))
@@ -26,19 +43,26 @@
      x
      (op e ...)
      (e e ...)
+     (global x)
      (set e e)
      (if e e e)
      (begin e e ...)
      (label lbl e)
      (break lbl e))
   (H hole
+     (op val ... H e ...)
+     (val ... H e ...)
+     (set val H)
+     (if H e e)
+     (begin H e ...)
+     (break lbl H))
+  (E hole
      (op val ... E e ...)
      (val ... E e ...)
      (set val E)
      (if E e e)
      (begin E e ...)
-     (break lbl E))
-  (E H
+     (break lbl E)
      (label lbl E))
   (x variable-not-otherwise-mentioned))
 
@@ -139,6 +163,21 @@
           (in-hole E null))
          "E-SubstNull"
          (side-condition (not (memq (term x) (term (x_1 ...))))))
+    (--> ((((x_1 loc_1) ...) env ... ((x_2 loc_2) ... (x loc) (x_3 loc_3) ...))
+          sto
+          (in-hole E (global x)))
+         ((((x loc) (x_1 loc_1) ...) env ... ((x_2 loc_2) ... (x loc) (x_3 loc_3) ...))
+          sto
+          (in-hole E null))
+         "E-Global")
+    (--> ((env ... ((x_1 loc_1) ...))
+          sto
+          (in-hole E (global x)))
+         ((env ... ((x_1 loc_1) ...))
+          sto
+          (in-hole E null))
+         "E-GlobalNull"
+         (side-condition (not (member (term x) (term (x_1 ...))))))
     (==> (op val ...) (delta op val ...)
          "E-Prim")
     (==> (if #t e_1 e_2)
