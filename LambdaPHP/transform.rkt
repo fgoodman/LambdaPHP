@@ -6,12 +6,15 @@
 (provide (all-defined-out))
 
 (define ex1 (php-parse (open-input-string "<?php
-$y = 5;
-function foo($x) {
-global $y, $z;
-return $y;
+function factorial($number) { 
+ 
+    if ($number < 2) { 
+        return 1; 
+    } else { 
+        return ($number * factorial($number-1)); 
+    } 
 }
-foo(0);
+factorial(4);
 ?>")))
 
 
@@ -25,6 +28,13 @@ foo(0);
      (match op
        ['ASSIGN `(set ,(parse l) ,(parse r))]
        [_ (error "unsupported op in Assign")])]
+    [(Binary _ _ op l r _)
+     (match op
+       ['IS_IDENTICAL `(=== ,(parse l) ,(parse r))]
+       ['MINUS `(- ,(parse l) ,(parse r))]
+       ['MULT `(* ,(parse l) ,(parse r))]
+       ['SMALLER `(< ,(parse l) ,(parse r))]
+       [else (error op)])]
     [(BlockStmt _ _ s _) `(begin ,@(map parse s))]
     [(ExprStmt _ _ e _) (parse e)]
     [(FunctionCall _ _ e a _) `(,(parse e) ,@(map parse a))]
