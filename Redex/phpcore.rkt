@@ -4,6 +4,14 @@
 
 (provide (all-defined-out))
 
+(define (lambdaPHP-delta t)
+  (define op (first t))
+  (define ra (rest t))
+  (match op
+    ['to-bool (case (first ra)
+                [(#f 0 0.0 "" "0" null) #f]
+                [else #t])]))
+
 (define-language 
   lambdaPHP
   (env ((x loc) ...))
@@ -13,24 +21,31 @@
   (prim (lambda (x ...) e) boolean number string null)
   (val prim)
   (lbl x)
+  (op to-bool)
   (e val
      x
+     (op e ...)
      (e e ...)
      (set e e)
+     (if e e e)
      (begin e e ...)
      (label lbl e)
      (break lbl e))
   (H hole
-     (val ... H e ...)
-     (set val H)
-     (begin E e ...))
-  (E hole
+     (op val ... E e ...)
      (val ... E e ...)
      (set val E)
+     (if E e e)
      (begin E e ...)
-     (label lbl E)
      (break lbl E))
+  (E H
+     (label lbl E))
   (x variable-not-otherwise-mentioned))
+
+(define-metafunction
+  lambdaPHP
+  delta : op val ... -> prim
+  [(delta op val ...) ,(lambdaPHP-delta (term (op val ...)))])
 
 (define-metafunction
   lambdaPHP
@@ -124,6 +139,14 @@
           (in-hole E null))
          "E-SubstNull"
          (side-condition (not (memq (term x) (term (x_1 ...))))))
+    (==> (op val ...) (delta op val ...)
+         "E-Prim")
+    (==> (if #t e_1 e_2)
+         e_1
+         "E-IfTrue")
+    (==> (if #f e_1 e_2)
+         e_2
+         "E-IfFalse")
     (==> (begin val e_1 e_2 ...)
          (begin e_1 e_2 ...)
          "E-Begin")
