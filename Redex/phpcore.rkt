@@ -30,6 +30,7 @@
     [`(=== ,v_1 ,v_2) (equal? v_1 v_2)]
     [`(< ,(? number? v_1) ,(? number? v_2)) (< v_1 v_2)]
     [`(+ ,(? number? v_1) ,(? number? v_2)) (+ v_1 v_2)]
+    [`(- ,(? number? v_1) ,(? number? v_2)) (- v_1 v_2)]
     [`(* ,(? number? v_1) ,(? number? v_2)) (* v_1 v_2)]))
                     
 (define-language 
@@ -41,7 +42,7 @@
   (prim (lambda (x ...) e) boolean number string null)
   (val prim)
   (lbl x)
-  (op < + * === to-bool)
+  (op < + - * === to-bool)
   (e val
      x
      (op e ...)

@@ -1,63 +1,47 @@
 #lang racket
 
 (require php-parser)
-(require redex)
 
 (provide (all-defined-out))
 
-(define ex1 (php-parse (open-input-string "<?php
-$x = 0;
-while ($x < 3) {
-$x += 1;
-}
-?>")))
-
-
 (define (desugar p)
+  
   (define (make-Binary op)
     (lambda (lst) (Binary null null op (car lst) (cdr lst))))
+  
   (define (make-Global n)
     (GlobalStmt null null (list (Variable null null n))))
   
   (match p
-    [(? cons?) (term (begin ,@(map desugar p)))]
-    [(? empty?) (term ())]
-    [(? number?) p]
+    [(or (? number?)
+         (? boolean?)
+         (? string?)
+         (? null?)) p]
     
+    [(? cons?) `(begin ,@(map desugar p))]
+
     [(Assign _ _ op l r _)
-     `(set ,(desugar l) ,(desugar ((match op ; Bitwise assignment operators
-                                             ; are excluded
+     `(set ,(desugar l) ,(desugar ((match op
                                      ['PLUS_EQUAL (make-Binary 'PLUS)]
                                      ['MINUS_EQUAL (make-Binary 'MINUS)]
                                      ['MULT_EQUAL (make-Binary 'MULT)]
-                                     ['EXPO_EQUAL (make-Binary 'EXPO)]
                                      ['DIV_EQUAL (make-Binary 'DIV)]
                                      ['MOD_EQUAL (make-Binary 'MOD)]
-                                     ['AND_EQUAL (make-Binary 'LOGICAL_AND)]
-                                     ['OR_EQUAL (make-Binary 'LOGICAL_OR)]
-                                     ['XOR_EQUAL (make-Binary 'LOGICAL_XOR)]
                                      ['CONCAT_EQUAL (make-Binary 'DOT)]
-                                     [else cdr]) (cons l r))))]
+                                     [_ cdr]) (cons l r))))]
     
     [(Binary _ _ op l r _)
      `(,(match op
-          ; Bitwise operators are excluded
-          
-          ; Arithmetic operators
           ['PLUS `+]
           ['MINUS `-]
           ['MULT `*]
-          ['EXPO `**]
           ['DIV `/]
           ['MOD `%]
+          
           ['DOT #\.]
           
-          ; Logical opeartors
-          ['BOOLEAN_OR (error op)]  ;
-          ['BOOLEAN_AND (error op)] ; Not sure what either of thse do...
           ['LOGICAL_OR `or]
           ['LOGICAL_AND `and]
-          ['LOGICAL_XOR 'xor]
           ['IS_IDENTICAL `===]
           ['IS_NOT_IDENTICAL `!==]
           ['IS_EQUAL `==]
@@ -65,12 +49,18 @@ $x += 1;
           ['SMALLER `<]
           ['IS_SMALLER_OR_EQUAL `<=]
           ['GREATER `>]
-          ['IS_GREATER_OR_EQUAL `>=])
+          ['IS_GREATER_OR_EQUAL `>=]
+          [_ (error (format "Binary operator ~s not found"
+                            (pretty-format op)))])
        ,(desugar l) ,(desugar r))]
     
     [(BlockStmt _ _ s _) `(begin ,@(map desugar s))]
     
     [(ExprStmt _ _ e _) (desugar e)]
+    
+    [(ForLoop _ _ b t a s _)
+     `(begin ,(desugar b) (while ,(desugar t) (begin ,(desugar s)
+                                                     ,(desugar a))))]
     
     [(FunctionCall _ _ e a _) `(,(desugar e) ,@(map desugar a))]
     
@@ -78,9 +68,7 @@ $x += 1;
     
     [(FunctionDcl _ _ _ n a b _)
      `(set ,(string->symbol n) (lambda (,@(map desugar a))
-                                 ; Put function name in scope for recursion
                                  ,(append (desugar (cons (make-Global n) b))
-                                          ; All functions must return something
                                           (list `(break $ret null)))))]
     
     [(GlobalStmt _ _ l _)
@@ -113,5 +101,6 @@ $x += 1;
     
     [(WhileStmt _ _ c b _) `(while ,(desugar c) ,(desugar b))]
     
-    [_ (begin (print p) (error "Unmatched case"))]))
-(desugar ex1)
+    [_ (error 
+        (format "No pattern found for desugaring the following expression:\n~a"
+                (pretty-format p)))]))
