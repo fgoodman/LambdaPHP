@@ -14,12 +14,12 @@
   (prim (lambda (x ...) e) boolean number string null)
   (val prim)
   (lbl x)
-  (op inc dec
+  (op to-bool to-int to-double to-string
       + - * / %
       #\.
       or and === !== == != < <= > >=
-      !
-      to-bool to-int to-double to-string)
+      ! ;-
+      inc dec)
   (e val
      x
      (op e ...)
