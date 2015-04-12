@@ -14,7 +14,12 @@
   (prim (lambda (x ...) e) boolean number string null)
   (val prim)
   (lbl x)
-  (op < + - * === to-bool)
+  (op inc dec
+      + - * / %
+      #\.
+      or and === !== == != < <= > >=
+      !
+      to-bool to-int to-double to-string)
   (e val
      x
      (op e ...)
@@ -102,6 +107,8 @@
 (define eval-lambdaPHP
   (reduction-relation
     lambdaPHP
+    
+    ; Variables
     (--> ((((x_1 loc_1) ... (x_cur loc) (x_2 loc_2) ...) env ...)
           ((loc_3 val_3) ... (loc val_old) (loc_4 val_4) ...)
           (in-hole E (set x_cur val_new)))
@@ -118,13 +125,6 @@
          "E-Assign"
          (where loc_new ,(genloc))
          (side-condition (not (memq (term x_new) (term (x_1 ...))))))
-    (--> ((env ...)
-          sto
-          (in-hole E ((lambda (x ...) e) val ...)))
-         ((() env ...)
-          sto
-          (in-hole E (label $ret (subst-n (x val) ... e))))
-         "E-Beta")
     (--> ((((x_1 loc_1) ... (x loc) (x_2 loc_2) ...) env ...)
           ((loc_3 val_3) ... (loc val) (loc_4 val_4) ...)
           (in-hole E x))
@@ -140,6 +140,15 @@
           (in-hole E null))
          "E-SubstNull"
          (side-condition (not (memq (term x) (term (x_1 ...))))))
+    
+    ; Functions
+    (--> ((env ...)
+          sto
+          (in-hole E ((lambda (x ...) e) val ...)))
+         ((() env ...)
+          sto
+          (in-hole E (label $ret (subst-n (x val) ... e))))
+         "E-Beta")
     (--> ((((x_1 loc_1) ...) env ... ((x_2 loc_2) ... (x loc) (x_3 loc_3) ...))
           sto
           (in-hole E (global x)))
@@ -155,8 +164,12 @@
           (in-hole E null))
          "E-GlobalNull"
          (side-condition (not (member (term x) (term (x_1 ...))))))
+    
+    ; Primitives
     (==> (op val ...) (delta op val ...)
          "E-Prim")
+    
+    ; Labels
     (==> (if #t e_1 e_2)
          e_1
          "E-IfTrue")
@@ -172,6 +185,8 @@
     (==> (while e_1 e_2)
          (if (to-bool e_1) (begin e_2 (while e_1 e_2)) null)
          "E-While")
+    
+    ; Labels (internal)
     (==> (label lbl (in-hole H (break lbl val)))
          val
          "E-Label-Match"
@@ -202,15 +217,3 @@
   (syntax-rules ()
     [(_ exp)
      (traces eval-lambdaPHP (term ((()) () exp)))]))
-
-(define-syntax test
-  (syntax-rules ()
-    [(_ e1 e2)
-     (test-predicate
-      (lambda (result)
-        (and (list? result) (= (length result) 1)
-             (or (equal? (first result) (term e2))
-                 (and (list? (first result))
-                      (= 3 (length (first result)))
-                      (equal? (third (first result)) (term e2))))))
-      (apply-reduction-relation* eval-lambdaPHP (term ((()) () e1))))]))

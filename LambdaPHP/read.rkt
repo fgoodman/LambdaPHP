@@ -5,8 +5,8 @@
          "desugar.rkt"
          "../Redex/phpcore.rkt")
 
-(define AST (php-parse (open-input-string (read-file 'stdin))))
+(define input (open-input-string (read-file 'stdin)))
 
-(define λPHP (desugar AST))
+(define λPHP (desugar (php-parse input)))
 
 (trace ,λPHP)

@@ -14,9 +14,11 @@
   
   (match p
     [(or (? number?)
-         (? boolean?)
-         (? string?)
          (? null?)) p]
+    
+    ['BOOL_TRUE #t]
+    ['BOOL_FALSE #f]
+    [(? string?) (string-replace (string-replace p "\"" "") "\'" "")]
     
     [(? cons?) `(begin ,@(map desugar p))]
 
@@ -56,6 +58,12 @@
     
     [(BlockStmt _ _ s _) `(begin ,@(map desugar s))]
     
+    [(Cast _ _ t e _) `(,(match t
+                           ['BOOL_CAST `to-bool]
+                           ['INT_CAST `to-int]
+                           ['DOUBLE_CAST `to-double]
+                           ['STRING_CAST `to-string]) ,(desugar e))]
+    
     [(ExprStmt _ _ e _) (desugar e)]
     
     [(ForLoop _ _ b t a s _)
@@ -78,24 +86,29 @@
      `(if (to-bool ,(desugar c)) ,(desugar t) ,(desugar e))]
     
     [(Infix _ _ op e _)
-     `(set ,(desugar e) ,(desugar ((make-Binary (match op
-                                                  ['INC 'PLUS]
-                                                  ['DEC 'MINUS])) (cons e 1))))]
+     `(set ,(desugar e) (,(match op
+                            ['INC `inc]
+                            ['DEC `dec]) ,(desugar e)))]
     
     [(NamespaceName _ _ _ n _) (string->symbol (first n))]
     
     [(ParameterDcl _ _ _ n _ _ _) (string->symbol n)]
     
     [(Postfix _ _ op e _)
-     (desugar ((make-Binary (match op
-                              ['INC 'MINUS]
-                              ['DEC 'PLUS]))
-               (cons (Infix null null op e) 1)))]
+     `(begin (set $$_tmp ,(desugar e))
+             (set ,(desugar e) (,(match op
+                                   ['INC `inc]
+                                   ['DEC `dec]) ,(desugar e)))
+             $$_tmp)]
     
     [(ReturnStmt _ _ e _) `(break $ret ,(desugar e))]
     
     [(TestExpr _ _ c t e _)
      `(if (to-bool ,(desugar c)) ,(desugar t) ,(desugar e))]
+    
+    [(Unary _ _ op e _) `(,(match op
+                             ['MINUS `-]
+                             ['NEG `!]) ,(desugar e))]
     
     [(Variable _ _ n _) (string->symbol n)]
     
