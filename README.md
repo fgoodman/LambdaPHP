@@ -10,7 +10,7 @@ I wrote a [desugaring
 function](https://github.com/fgoodman/lambdaPHP/LambdaPHP/desugar.rkt) to
 desugar the abstract syntax trees produced by php-parser. The following syntax
 is supported:
-* Primitive values \(integer, float, string, boolean, null\)
+* Primitive values \(integer, double, string, boolean, null\)
 * Variable assignment \(\-, \+=, \-=, \*=, /=, %=, \.=\)
 * Binary operators \(\+, \-, \*, /, %, \., ||, &&, ===, \!==, ==, \!=, <, <=, >, >=\)
 * Casts (bool, int, float, string)
