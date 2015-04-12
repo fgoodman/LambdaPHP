@@ -13,6 +13,7 @@ is supported:
 * Primitive values \(integer, float, string, boolean, null\)
 * Variable assignment \(\-, \+=, \-=, \*=, /=, %=, \.=\)
 * Binary operators \(\+, \-, \*, /, %, \., ||, &&, ===, \!==, ==, \!=, <, <=, >, >=\)
+* Casts (bool, int, float, string)
 * For loops
 * Function application
 * Function declaration
