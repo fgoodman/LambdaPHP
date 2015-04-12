@@ -1,10 +1,9 @@
 #lang racket
 
-(require 2htdp/batch-io)
-(require php-parser)
-
-(require "desugar.rkt")
-(require "../Redex/phpcore.rkt")
+(require 2htdp/batch-io
+         php-parser
+         "desugar.rkt"
+         "../Redex/phpcore.rkt")
 
 (define AST (php-parse (open-input-string (read-file 'stdin))))
 

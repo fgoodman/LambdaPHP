@@ -1,37 +1,9 @@
 #lang racket
 
-(require redex)
+(require redex
+         "phpdelta.rkt")
 
 (provide (all-defined-out))
-
-(define lambdaPHP-delta
-  (match-lambda
-    
-    ; http://php.net/manual/en/language.types.boolean.php#language.types.boolean.casting
-    [`(to-bool ,v) (case v
-                     [(#f 0 0.0 "" "0" null) #f]
-                     [else #t])]
-    ; http://php.net/manual/en/language.types.integer.php#language.types.integer.casting
-    [`(to-int ,v) (match v
-                    [#f 0]
-                    [#t 1]
-                    [(? flonum?) (floor v)]
-                    [(? integer?) v]
-                    ; http://php.net/manual/en/language.types.string.php#language.types.string.conversion
-                    [(? string?) (error "todo")])]
-    
-    ; http://php.net/manual/en/language.types.string.php#language.types.string.casting
-    [`(to-string ,v) (match v
-                       [#t "1"]
-                       [#f ""]
-                       [(? null?) ""]
-                       [(? number?) (number->string v)]
-                       [(? string?) v])]
-    [`(=== ,v_1 ,v_2) (equal? v_1 v_2)]
-    [`(< ,(? number? v_1) ,(? number? v_2)) (< v_1 v_2)]
-    [`(+ ,(? number? v_1) ,(? number? v_2)) (+ v_1 v_2)]
-    [`(- ,(? number? v_1) ,(? number? v_2)) (- v_1 v_2)]
-    [`(* ,(? number? v_1) ,(? number? v_2)) (* v_1 v_2)]))
                     
 (define-language 
   lambdaPHP
@@ -230,3 +202,15 @@
   (syntax-rules ()
     [(_ exp)
      (traces eval-lambdaPHP (term ((()) () exp)))]))
+
+(define-syntax test
+  (syntax-rules ()
+    [(_ e1 e2)
+     (test-predicate
+      (lambda (result)
+        (and (list? result) (= (length result) 1)
+             (or (equal? (first result) (term e2))
+                 (and (list? (first result))
+                      (= 3 (length (first result)))
+                      (equal? (third (first result)) (term e2))))))
+      (apply-reduction-relation* eval-lambdaPHP (term ((()) () e1))))]))

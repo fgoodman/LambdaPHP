@@ -2,7 +2,7 @@
 
 (require php-parser)
 
-(provide (all-defined-out))
+(provide desugar)
 
 (define (desugar p)
   
