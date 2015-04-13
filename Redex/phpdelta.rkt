@@ -3,6 +3,11 @@
 (provide lambdaPHP-delta)
 
 ; http://perldoc.perl.org/perlretut.html#Non-capturing-groupings
+(define (is-numerical str)
+  (list? (regexp-match
+          (pregexp
+           "[+-]? *(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?") str)))
+
 (define (strtod str) ; close enough...
   (define m (regexp-match
              (pregexp
@@ -48,6 +53,28 @@
     [(? number?) v]
     [else (to-int v)]))
 
+; http://php.net/manual/en/language.operators.comparison.php
+(define (cmp op v_1 v_2)
+  (define sp (match op
+               [< string<?]
+               [<= string<=?]
+               [> string>?]
+               [>= string>=?]
+               [else string=?]))
+  (define h (if (eq? op eq?) identity to-number))
+  (cond
+    [(and (or (null? v_1) (string? v_1)) (string? v_2))
+     (if (or (is-numerical v_1)
+             (is-numerical v_2)) (op (to-number (to-string v_1)) (to-number v_2))
+                                 (sp (to-string v_1) v_2))]
+    [(and (string? v_1) (or (null? v_2) (string? v_2)))
+     (if (or (is-numerical v_1)
+             (is-numerical v_2)) (op (to-number v_1) (to-number (to-string v_2)))
+                                 (sp v_1 (to-string v_2)))]
+    [(and (boolean? v_1) (null? v_1)) (op (h (to-bool v_1)) (h (to-bool v_2)))]
+    [(and (boolean? v_2) (null? v_2)) (op (h (to-bool v_1)) (h (to-bool v_2)))]
+    [else (op (to-number v_1) (to-number v_2))]))
+
 (define lambdaPHP-delta
   (match-lambda
     [`(to-bool ,v) (to-bool v)]
@@ -67,12 +94,12 @@
     [`(and ,v_1 ,v_2) (and (to-bool v_1) (to-bool v_2))]
     [`(=== ,v_1 ,v_2) (eq? v_1 v_2)]
     [`(!== ,v_1 ,v_2) (not (eq? v_1 v_2))]
-    ;[`(== ,v_1 ,v_2)]
-    ;[`(!= ,v_1 ,v_2)]
-    [`(< ,v_1 ,v_2) (< (to-number v_1) (to-number v_2))]
-    [`(<= ,v_1 ,v_2) (<= (to-number v_1) (to-number v_2))]
-    [`(> ,v_1 ,v_2) (> (to-number v_1) (to-number v_2))]
-    [`(>= ,v_1 ,v_2) (>= (to-number v_1) (to-number v_2))]
+    [`(== ,v_1 ,v_2) (cmp eq? v_1 v_2)]
+    [`(!= ,v_1 ,v_2) (not (cmp eq? v_1 v_2))]
+    [`(< ,v_1 ,v_2) (cmp < v_1 v_2)]
+    [`(<= ,v_1 ,v_2) (cmp <= v_1 v_2)]
+    [`(> ,v_1 ,v_2) (cmp > v_1 v_2)]
+    [`(>= ,v_1 ,v_2) (cmp >= v_1 v_2)]
     
     [`(! ,v_1) (not (to-bool v_1))]
     [`(- ,v_1) (* (to-number v_1) -1)]
