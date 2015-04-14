@@ -112,8 +112,9 @@
        (print (match v
                 [#t "bool(true)"]
                 [#f "bool(false)"]
-                [(? integer?) (format "int(~a)" v)]
-                [(? flonum?) (format "float(~a)" (string-trim (number->string v) ".0" #:left? #t))]
+                [(? number?) 
+                 (define n (number->string v))
+                 (format "~a(~a)" (if (member #\. (string->list n)) "float" "int") (string-trim n ".0" #:left? #t))]
                 [else (define s (format "~a" v))
                       (format "string(~a) \"~a\"" (string-length s) s)])))
      'null]
