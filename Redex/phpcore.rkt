@@ -19,7 +19,8 @@
       #\.
       or and === !== == != < <= > >=
       ! ;-
-      inc dec)
+      inc dec
+      var-dump)
   (e val
      x
      (op e ...)
@@ -50,8 +51,8 @@
 
 (define-metafunction
   lambdaPHP
-  delta : op val ... -> prim
-  [(delta op val ...) ,(lambdaPHP-delta (term (op val ...)))])
+  delta : op val ... -> prim ;e ?
+  [(delta op val ...) ,(begin (term (op val ...)) (lambdaPHP-delta (term (op val ...))))])
 
 (define-metafunction
   lambdaPHP

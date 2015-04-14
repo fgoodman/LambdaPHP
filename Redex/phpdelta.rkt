@@ -4,7 +4,7 @@
 
 ; http://perldoc.perl.org/perlretut.html#Non-capturing-groupings
 (define (is-numerical str)
-  (list? (regexp-match
+  (cons? (regexp-match
           (pregexp
            "[+-]? *(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?") str)))
 
@@ -12,7 +12,7 @@
   (define m (regexp-match
              (pregexp
               "[+-]? *(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?") str))
-  (if (= (length m) 1) (string->number (string-trim (first m))) 0))
+  (if (cons? m) (string->number (string-trim (first m))) 0))
 
 ; http://php.net/manual/en/language.types.boolean.php#language.types.boolean.casting
 (define (to-bool v)
@@ -106,5 +106,16 @@
     
     ;[`(inc ,v_1)]
     ;[`(dec ,v_1)]
+    
+    [`(var-dump ,@(list lvp ...))
+     (for ([v lvp])
+       (print (match v
+                [#t "bool(true)"]
+                [#f "bool(false)"]
+                [(? integer?) (format "int(~a)" v)]
+                [(? flonum?) (format "float(~a)" (string-trim (number->string v) ".0" #:left? #t))]
+                [else (define s (format "~a" v))
+                      (format "string(~a) \"~a\"" (string-length s) s)])))
+     'null]
    
     [else (error "NYI")]))

@@ -64,6 +64,8 @@
                            ['DOUBLE_CAST `to-double]
                            ['STRING_CAST `to-string]) ,(desugar e))]
     
+    [(EchoStmt _ _ s _) `(begin ,@(map desugar s))]
+    
     [(ExprStmt _ _ e _) (desugar e)]
     
     [(ForLoop _ _ b t a s _)
@@ -90,7 +92,9 @@
                             ['INC `inc]
                             ['DEC `dec]) ,(desugar e)))]
     
-    [(NamespaceName _ _ _ n _) (string->symbol (first n))]
+    [(NamespaceName _ _ _ n _)
+     (define s (string->symbol (first n)))
+     (if (eq? s 'var_dump) `var-dump s)]
     
     [(ParameterDcl _ _ _ n _ _ _) (string->symbol n)]
     

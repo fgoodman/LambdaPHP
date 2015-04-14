@@ -2,6 +2,7 @@
 
 (require 2htdp/batch-io
          php-parser
+         redex
          "desugar.rkt"
          "../Redex/phpcore.rkt")
 
