@@ -107,16 +107,21 @@
     ;[`(inc ,v_1)]
     ;[`(dec ,v_1)]
     
+    [`(echo ,v)
+     (display v)
+     'null]
     [`(var-dump ,@(list lvp ...))
      (for ([v lvp])
-       (print (match v
-                [#t "bool(true)"]
-                [#f "bool(false)"]
-                [(? number?) 
-                 (define n (number->string v))
-                 (format "~a(~a)" (if (member #\. (string->list n)) "float" "int") (string-trim n ".0" #:left? #t))]
-                [else (define s (format "~a" v))
-                      (format "string(~a) \"~a\"" (string-length s) s)])))
+       (display (match v
+                  [#t "bool(true)"]
+                  [#f "bool(false)"]
+                  [(? number?) 
+                   (define n (number->string v))
+                   (format "~a(~a)" (if (member #\. (string->list n))
+                                        "float" "int")
+                           (string-trim n ".0" #:left? #t))]
+                  [else (define s (format "~a" v))
+                        (format "string(~a) \"~a\"" (string-length s) s)])))
      'null]
    
     [else (error "NYI")]))

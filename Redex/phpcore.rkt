@@ -20,7 +20,7 @@
       or and === !== == != < <= > >=
       ! ;-
       inc dec
-      var-dump)
+      echo var-dump)
   (e val
      x
      (op e ...)
