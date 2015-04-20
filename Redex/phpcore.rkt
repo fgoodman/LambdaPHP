@@ -3,97 +3,74 @@
 (require redex
          "phpdelta.rkt")
 
-(provide (all-defined-out))
-                    
-(define-language 
-  lambdaPHP
-  (env ((x loc) ...))
-  (envs (env ...))
-  (sto ((loc val) ...))
-  (loc natural)
-  (prim (lambda (x ...) e) boolean number string null)
-  (val prim)
-  (lbl x)
+(define-language L
+  (P (<?php e))
+  
+  (v (λ (x ...) e) boolean number string null undef)
+  
   (op to-bool to-int to-double to-string
       + - * / %
       #\.
       or and === !== == != < <= > >=
-      ! ;-
-      inc dec
-      echo var-dump)
-  (e val
+      !)
+  (e v
      x
      (op e ...)
      (e e ...)
+     (set! x e)
+     
      (global x)
-     (set x e)
+     (begin e e ...)
      (if e e e)
      (while e e)
-     (begin e e ...)
-     (label lbl e)
-     (break lbl e))
-  (H hole
-     (op val ... H e ...)
-     (val ... H e ...)
-     (set val H)
-     (if H e e)
-     (begin H e ...)
-     (break lbl H))
+     (return e)
+     (body e)
+     (echo (e ...)))
+  
   (E hole
-     (op val ... E e ...)
-     (val ... E e ...)
-     (set x E)
-     (if E e e)
+     (op v ... E e ...)
+     (v ... E e ...)
+     (set! x E)
      (begin E e ...)
-     (break lbl E)
-     (label lbl E))
-  (x variable-not-otherwise-mentioned))
+     (return E)
+     (body E)
+     (echo (v ... E e ...)))
+  
+  (x variable-not-otherwise-mentioned)
+  
+  (CF (B (σ σ ...) Σ e))
+  (B string)
+  (σ ((x i) ...))
+  (Σ ((i v) ...))
+  (i natural))
 
-(define-metafunction
-  lambdaPHP
-  delta : op val ... -> prim ;e ?
-  [(delta op val ...) ,(begin (term (op val ...)) (lambdaPHP-delta (term (op val ...))))])
+(define-metafunction L
+  IF : P -> CF
+  [(IF (<?php e)) ("" (()) () e)])
 
-(define-metafunction
-  lambdaPHP
+(define-metafunction L
   subst-n : (x any) ... any -> any
   [(subst-n (x_1 any_1) (x_2 any_2) ... any_3)
    (subst x_1 any_1 (subst-n (x_2 any_2) ... any_3))]
   [(subst-n any_3) any_3])
 
-(define-metafunction
-  lambdaPHP
+(define-metafunction L
   subst : x any any -> any
-  [(subst x_1 any_1 (label any_2 e_2))
-   (label any_2 (subst x_1 any_1 e_2))]
-   [(subst x_1 any_1 (break any_2 e_2))
-   (break any_2 (subst x_1 any_1 e_2))]
-  [(subst x_1 any_1 (lambda (x_2 ... x_1 x_3 ...) any_2))
-   (lambda (x_2 ... x_1 x_3 ...) any_2)
+  [(subst x_1 any_1 (λ (x_2 ... x_1 x_3 ...) any_2))
+   (λ (x_2 ... x_1 x_3 ...) any_2)
    (side-condition (not (member (term x_1) (term (x_2 ...)))))]
-  [(subst x_1 any_1 (lambda (x_2 ...) any_2))
-   ,(term-let ([(x_new ...)
-                (variables-not-in
-                 (term (x_1 any_1 any_2))
-                 (term (x_2 ...)))])
-              (term
-               (lambda (x_new ...)
-                 (subst x_1 any_1
-                        (subst-vars (x_2 x_new) ...
-                                    any_2)))))]
+  [(subst x_1 any_1 (λ (x_2 ...) any_2))
+   ,(term-let ([(x_new ...) (variables-not-in (term (x_1 any_1 any_2))
+                                              (term (x_2 ...)))])
+              (term (λ (x_new ...)
+                      (subst x_1 any_1 (subst-vars (x_2 x_new) ... any_2)))))]
   [(subst x_1 any_1 x_1) any_1]
   [(subst x_1 any_1 x_2) x_2]
-  [(subst x_1 any_1 (any_2 ...))
-   ((subst x_1 any_1 any_2) ...)]
+  [(subst x_1 any_1 (any_2 ...)) ((subst x_1 any_1 any_2) ...)]
   [(subst x_1 any_1 any_2) any_2])
 
-(define-metafunction
-  lambdaPHP
+(define-metafunction L
   subst-vars : (x any) ... any -> any
-  [(subst-vars (x_1 any_1) ... (label x_2 any_2))
-   (label x_2 (subst-vars (x_1 any_1) ... any_2))]
-  [(subst-vars (x_1 any_1) ... (break x_2 any_2))
-   (break x_2 (subst-vars (x_1 any_1) ... any_2))]
   [(subst-vars (x_1 any_1) x_1) any_1]
   [(subst-vars (x_1 any_1) (any_2 ...))
    ((subst-vars (x_1 any_1) any_2) ...)]
@@ -103,118 +80,99 @@
                (subst-vars (x_2 any_2) ... any_3))]
   [(subst-vars any) any])
 
-(define genloc (let ([cnt 0]) (lambda () (begin (set! cnt (+ cnt 1)) cnt))))
+(define-metafunction L
+  δ : op v ... -> e
+  [(δ op v ...) ,(δ-apply (term (op v ...)))])
 
-(define eval-lambdaPHP
+(define L-reduce
   (reduction-relation
-    lambdaPHP
-    
-    ; Variables
-    (--> ((((x_1 loc_1) ... (x_cur loc) (x_2 loc_2) ...) env ...)
-          ((loc_3 val_3) ... (loc val_old) (loc_4 val_4) ...)
-          (in-hole E (set x_cur val_new)))
-         ((((x_1 loc_1) ... (x_cur loc) (x_2 loc_2) ...) env ...)
-          ((loc_3 val_3) ... (loc val_new) (loc_4 val_4) ...)
-          (in-hole E val_new))
-         "E-Alloc+Assign")
-    (--> ((((x_1 loc_1) ...) env ...)
-          ((loc_2 val_2) ...)
-          (in-hole E (set x_new val_new)))
-         ((((x_new loc_new) (x_1 loc_1) ...) env ...)
-          ((loc_new val_new) (loc_2 val_2) ...)
-          (in-hole E val_new))
-         "E-Assign"
-         (where loc_new ,(genloc))
-         (side-condition (not (memq (term x_new) (term (x_1 ...))))))
-    (--> ((((x_1 loc_1) ... (x loc) (x_2 loc_2) ...) env ...)
-          ((loc_3 val_3) ... (loc val) (loc_4 val_4) ...)
-          (in-hole E x))
-         ((((x_1 loc_1) ... (x loc) (x_2 loc_2) ...) env ...)
-          ((loc_3 val_3) ... (loc val) (loc_4 val_4) ...)
-          (in-hole E val))
-         "E-Subst")
-    (--> ((((x_1 loc_1) ...) env ...)
-          sto
-          (in-hole E x))
-         ((((x_1 loc_1) ...) env ...)
-          sto
-          (in-hole E null))
-         "E-SubstNull"
-         (side-condition (not (memq (term x) (term (x_1 ...))))))
-    
-    ; Functions
-    (--> ((env ...)
-          sto
-          (in-hole E ((lambda (x ...) e) val ...)))
-         ((() env ...)
-          sto
-          (in-hole E (label $ret (subst-n (x val) ... e))))
-         "E-Beta")
-    (--> ((((x_1 loc_1) ...) env ... ((x_2 loc_2) ... (x loc) (x_3 loc_3) ...))
-          sto
-          (in-hole E (global x)))
-         ((((x loc) (x_1 loc_1) ...) env ... ((x_2 loc_2) ... (x loc) (x_3 loc_3) ...))
-          sto
-          (in-hole E null))
-         "E-Global")
-    (--> ((env ... ((x_1 loc_1) ...))
-          sto
-          (in-hole E (global x)))
-         ((env ... ((x_1 loc_1) ...))
-          sto
-          (in-hole E null))
-         "E-GlobalNull"
-         (side-condition (not (member (term x) (term (x_1 ...))))))
-    
-    ; Primitives
-    (==> (op val ...) (delta op val ...)
-         "E-Prim")
-    
-    ; Labels
-    (==> (if #t e_1 e_2)
-         e_1
-         "E-IfTrue")
-    (==> (if #f e_1 e_2)
-         e_2
-         "E-IfFalse")
-    (==> (begin val e_1 e_2 ...)
-         (begin e_1 e_2 ...)
-         "E-Begin")
-    (==> (begin val)
-         val
-         "E-BeginFinal")
-    (==> (while e_1 e_2)
-         (if (to-bool e_1) (begin e_2 (while e_1 e_2)) null)
-         "E-While")
-    
-    ; Labels (internal)
-    (==> (label lbl (in-hole H (break lbl val)))
-         val
-         "E-Label-Match"
-         (side-condition (not (eq? (term lbl) (term $ret)))))
-    (--> ((env_local env ...)
-          sto
-          (in-hole E (label lbl (in-hole H (break lbl val)))))
-         ((env ...)
-          sto
-          (in-hole E val))
-         "E-Label-Return"
-         (side-condition (eq? (term lbl) (term $ret))))
-    (==> (label lbl_1 (in-hole H (break lbl_2 val)))
-         (break lbl_2 val)
-         "E-Label-Pop"
-         (side-condition (not (equal? (term lbl_1) (term lbl_2)))))
-    (==> (break lbl_1 (in-hole H (break lbl_2 val)))
-         (break lbl_2 val)
-         "E-Break-Break")
-    (==> (label lbl_1 val)
-         val
-         "E-Label-Pop-NoBreak")
-    with
-    [(--> (envs sto (in-hole E e_1)) (envs sto (in-hole E e_2)))
-     (==> e_1 e_2)]))
+   L #:domain CF
+   
+   ; Variable substitution
+   (--> (B (((x_1 i_1) ... (x i) (x_2 i_2) ...) σ ...)
+             ((i_3 v_3) ... (i v) (i_4 v_4) ...)
+             (in-hole E x))
+        (B (((x_1 i_1) ... (x i) (x_2 i_2) ...) σ ...)
+             ((i_3 v_3) ... (i v) (i_4 v_4) ...)
+             (in-hole E v))
+        E-Subst)
+   (--> (B (((x_1 i_1) ...) σ ...) Σ (in-hole E x))
+        (B (((x_1 i_1) ...) σ ...) Σ (in-hole E null))
+        E-SubstNull
+        (side-condition (not (member (term x) (term (x_1 ...))))))
+   
+   ; Primitive application
+   (==> (op v ...) (δ op v ...) E-Prim)
+   
+   ; Function application
+   (--> (B (σ ...) Σ (in-hole E ((λ (x ...) e) v ...)))
+        (B (() σ ...) Σ (in-hole E (body (subst-n (x v) ... e))))
+        E-β)
+   
+   ; Variable assignment
+   (--> (B (((x_1 i_1) ... (x_new i_cur) (x_2 i_2) ...) σ ...)
+             ((i_3 v_3) ... (i_cur v_cur) (i_4 v_4) ...)
+             (in-hole E (set! x_new v_new)))
+        (B (((x_1 i_1) ... (x_new i_cur) (x_2 i_2) ...) σ ...)
+             ((i_3 v_3) ... (i_cur v_new) (i_4 v_4) ...)
+             (in-hole E v_new))
+        E-Update)
+   (--> (B (((x_1 i_1) ...) σ ...) () (in-hole E (set! x_new v_new)))
+        (B (((x_new 0) (x_1 i_1) ...) σ ...) ((0 v_new)) (in-hole E v_new))
+        E-AssignFirst
+        (side-condition (not (member (term x_new) (term (x_1 ...))))))
+   (--> (B (((x_1 i_1) ...) σ ...)
+             ((i_2 v_2) (i_r v_r) ...)
+             (in-hole E (set! x_new v_new)))
+        (B (((x_new i_new) (x_1 i_1) ...) σ ...)
+             ((i_new v_new) . ((i_2 v_2) (i_r v_r) ...))
+             (in-hole E v_new))
+        E-Assign
+        (where i_new ,(add1 (term i_2)))
+        (side-condition (not (member (term x_new) (term (x_1 ...))))))
+         
+   ; Global statement
+   (--> (B (((x_1 i_1) ...) σ ... ((x_2 i_2) ... (x i) (x_3 i_3) ...))
+             Σ
+             (in-hole E (global x)))
+        (B (((x_1 i_1) ...) σ ... ((x_2 i_2) ... (x i) (x_3 i_3) ...))
+             Σ
+             (in-hole E undef))
+        E-Global)
+   
+   ; Sequential statement
+   (==> (begin v e_1 e_2 ...) (begin e_1 e_2 ...) E-Begin)
+   (==> (begin v) v E-BeginFinal)
+   
+   ; Conditional statement
+   (==> (if e_test e_1 e_2) (if (to-bool e_test) e_1 e_2) E-If)
+   (==> (if #t e_1 e_2) e_1 E-IfTrue)
+   (==> (if #f e_1 e_2) e_2 E-IfFalse)
+   
+   ; While statement
+   (==> (while e_1 e_2) (if (to-bool e_1) (begin e_2 (while e_1 e_2) undef))
+        E-While)
+   
+   ; Return statement
+   (--> (B (σ_1 σ ...) Σ (in-hole E (body (return v))))
+        (B (σ ...) Σ (in-hole E v))
+        E-Return)
+   
+   ; Echo statement
+   (--> (B (σ ...) Σ (in-hole E (echo (v_f v_r ...))))
+        (B (σ ...) Σ (in-hole E (echo ((to-string v_f) v_r ...))))
+        E-EchoValue
+        (side-condition (not (string? (term v_f)))))
+   (--> (B (σ ...) Σ (in-hole E (echo (v_f v_r ...))))
+        (,(string-append (term B)
+                         (term v_f)) (σ ...) Σ (in-hole E (echo (v_r ...))))
+        E-Echo
+        (side-condition (string? (term v_f))))
+   (==> (in-hole E (echo ())) (in-hole E undef) E-EchoFinal)
+   
+   with
+   [(--> (B (σ ...) Σ (in-hole E e_1))
+         (B (σ ...) Σ (in-hole E e_2)))
+    (==> e_1 e_2)]))
 
-(define-syntax trace
-  (syntax-rules ()
-    [(_ exp)
-     (traces eval-lambdaPHP (term ((()) () exp)))]))
+;(render-reduction-relation L-reduce "rel.pdf")

@@ -1,6 +1,6 @@
 #lang racket
 
-(provide lambdaPHP-delta)
+(provide δ-apply)
 
 ; http://perldoc.perl.org/perlretut.html#Non-capturing-groupings
 (define (is-numerical str)
@@ -75,7 +75,7 @@
     [(and (boolean? v_2) (null? v_2)) (op (h (to-bool v_1)) (h (to-bool v_2)))]
     [else (op (to-number v_1) (to-number v_2))]))
 
-(define lambdaPHP-delta
+(define δ-apply
   (match-lambda
     [`(to-bool ,v) (to-bool v)]
     [`(to-int ,v) (to-int v)]
@@ -107,9 +107,6 @@
     ;[`(inc ,v_1)]
     ;[`(dec ,v_1)]
     
-    [`(echo ,v)
-     (display v)
-     'null]
     [`(var-dump ,@(list lvp ...))
      (for ([v lvp])
        (display (match v
