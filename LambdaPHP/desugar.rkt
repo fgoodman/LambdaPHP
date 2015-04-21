@@ -20,7 +20,7 @@
     ['BOOL_FALSE #f]
     [(? string?) (string-replace (string-replace p "\"" "") "\'" "")]
     
-    [(? cons?) `(begin ,@(map desugar p))]
+    [(? cons?) `(begin ,@(map desugar p) undef)]
 
     [(Assign _ _ op l r _)
      `(set ,(desugar l) ,(desugar ((match op
@@ -56,7 +56,7 @@
                             (pretty-format op)))])
        ,(desugar l) ,(desugar r))]
     
-    [(BlockStmt _ _ s _) `(begin ,@(map desugar s))]
+    [(BlockStmt _ _ s _) `(begin ,@(map desugar s) undef)]
     
     [(Cast _ _ t e _) `(,(match t
                            ['BOOL_CAST `to-bool]
@@ -70,45 +70,46 @@
     
     [(ForLoop _ _ b t a s _)
      `(begin ,(desugar b) (while ,(desugar t) (begin ,(desugar s)
-                                                     ,(desugar a))))]
+                                                     ,(desugar a)
+                                                     undef)) undef)]
     
     [(FunctionCall _ _ e a _) `(,(desugar e) ,@(map desugar a))]
     
     [(FunctionCallParameter _ _ e _ _) (desugar e)]
     
     [(FunctionDcl _ _ _ n a b _)
-     `(set ,(string->symbol n) (lambda (,@(map desugar a))
+     `(set ,(string->symbol n) (λ (,@(map desugar a))
                                  ,(append (desugar (cons (make-Global n) b))
-                                          (list `(break $ret null)))))]
+                                          (list `(return null) `undef))))]
     
     [(GlobalStmt _ _ l _)
-     `(begin ,@(map (lambda (x) `(global ,(desugar x))) l))]
+     `(begin ,@(map (lambda (x) `(global ,(desugar x))) l) undef)]
     
     [(IfStmt _ _ c t _ e _)
-     `(if (to-bool ,(desugar c)) ,(desugar t) ,(desugar e))]
+     `(if ,(desugar c) ,(desugar t) ,(desugar e))]
     
-    [(Infix _ _ op e _)
+    #;[(Infix _ _ op e _)
      `(set ,(desugar e) (,(match op
                             ['INC `inc]
                             ['DEC `dec]) ,(desugar e)))]
     
-    [(NamespaceName _ _ _ n _)
+    #;[(NamespaceName _ _ _ n _)
      (define s (string->symbol (first n)))
      (if (eq? s 'var_dump) `var-dump s)]
     
     [(ParameterDcl _ _ _ n _ _ _) (string->symbol n)]
     
-    [(Postfix _ _ op e _)
+    #;[(Postfix _ _ op e _)
      `(begin (set $$_tmp ,(desugar e))
              (set ,(desugar e) (,(match op
                                    ['INC `inc]
                                    ['DEC `dec]) ,(desugar e)))
              $$_tmp)]
     
-    [(ReturnStmt _ _ e _) `(break $ret ,(desugar e))]
+    [(ReturnStmt _ _ e _) `(return ,(desugar e))]
     
     [(TestExpr _ _ c t e _)
-     `(if (to-bool ,(desugar c)) ,(desugar t) ,(desugar e))]
+     `(if ,(desugar c) ,(desugar t) ,(desugar e))]
     
     [(Unary _ _ op e _) `(,(match op
                              ['MINUS `-]
