@@ -17,6 +17,7 @@
       or and === !== == != < <= > >=
       !)
   (c-op op c)
+  (x-op op x)
   
   (e v
      x
@@ -63,11 +64,32 @@
   (i natural))
 
 (define-metafunction L
-  Lift : e -> e
-  [(Lift e) e])
+  Lift : (begin e ...) -> (begin e ...)
+  [(Lift (begin e ...))
+   (begin ,@(call-with-values
+             (λ () (partition (curry (redex-match? L (set! x_1 (λ (x ...) e))))
+                              (term (e ...)))) append))])
+
+(define gensym (let ([cnt 0])
+                 (lambda () (begin (set! cnt (+ cnt 1))
+                                   (string->symbol (format "tmp-~s" cnt))))))
 
 (define-metafunction L
   ANF : e -> e
+  [(ANF (x-op e ...))
+   (begin ,@(let ([l (foldr (lambda (x b)
+                              (let ([f (first b)]
+                                    [r (second b)]
+                                    [s (gensym)])
+                                (if (redex-match? L (e_1 e_2 ...) x)
+                                    (list (cons `(set! ,s ,(term (ANF ,x))) f)
+                                          (cons s r))
+                                    (list f (cons x r)))))
+                            (list empty empty) (term (e ...)))])
+              (append (first l) (list (cons (term x-op) (second l))))))]
+  [(ANF (set! x e)) (set! x (ANF e))]
+  [(ANF (echo (e ...))) (echo ((ANF e) ...))]
+  [(ANF (any e ...)) (any (ANF e) ...) (side-condition (not (equal? (term any) (term λ))))]
   [(ANF e) e])
 
 (define-metafunction L
