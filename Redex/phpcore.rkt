@@ -26,6 +26,7 @@
      (set! x e)
      
      (global x)
+     (self x)
      (begin e e ...)
      (if e e e)
      (while e e)
@@ -33,6 +34,15 @@
      (body e)
      (echo (e ...)))
   
+  (H hole
+     (op v ... H e ...)
+     (c H)
+     (v ... H e ...)
+     (set! x H)
+     (begin H e ...)
+     (if H e e)
+     (return H)
+     (echo (v ... H e ...)))
   (E hole
      (op v ... E e ...)
      (c E)
@@ -143,13 +153,30 @@
         (side-condition (not (member (term x_new) (term (x_1 ...))))))
          
    ; Global statement
-   (--> (B (((x_1 i_1) ...) σ ... ((x_2 i_2) ... (x i) (x_3 i_3) ...))
+   (--> (B (σ_1 σ ... (name g ((x_2 i_2) ... (x i) (x_3 i_3) ...)))
              Σ
              (in-hole E (global x)))
-        (B (((x_1 i_1) ...) σ ... ((x_2 i_2) ... (x i) (x_3 i_3) ...))
+        (B (((x i) . σ_1) σ ... g)
              Σ
              (in-hole E undef))
         E-Global)
+   (--> (B (σ ... (name g ((x_1 i_1) ...)))
+             Σ
+             (in-hole E (global x)))
+        (B (σ ... g)
+             Σ
+             (in-hole E undef))
+        E-GlobalNull
+        (side-condition (not (member (term x) (term (x_1 ...))))))
+   
+   ; Self statement
+   (--> (B (σ_1 (name s ((x_2 i_2) ... (x i) (x_3 i_3) ...)) σ ...)
+             Σ
+             (in-hole E (self x)))
+        (B (((x i) . σ_1) s σ ...)
+             Σ
+             (in-hole E undef))
+        E-Self)
    
    ; Sequential statement
    (==> (begin v e_1 e_2 ...) (begin e_1 e_2 ...) E-Begin)
@@ -162,11 +189,11 @@
    (==> (if #f e_1 e_2) e_2 E-IfFalse)
    
    ; While statement
-   (==> (while e_1 e_2) (if (to-bool e_1) (begin e_2 (while e_1 e_2) undef))
+   (==> (while e_1 e_2) (if (to-bool e_1) (begin e_2 (while e_1 e_2)) undef)
         E-While)
    
    ; Return statement
-   (--> (B (σ_1 σ ...) Σ (in-hole E (body (return v))))
+   (--> (B (σ_1 σ ...) Σ (in-hole E (body (in-hole H (return v)))))
         (B (σ ...) Σ (in-hole E v))
         E-Return)
    

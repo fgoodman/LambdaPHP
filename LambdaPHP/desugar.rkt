@@ -9,9 +9,6 @@
   (define (make-Binary op)
     (lambda (lst) (Binary null null op (car lst) (cdr lst))))
   
-  (define (make-Global n)
-    (GlobalStmt null null (list (Variable null null n))))
-  
   (match p
     [(or (? number?)
          (? null?)) p]
@@ -23,14 +20,14 @@
     [(? cons?) `(begin ,@(map desugar p) undef)]
 
     [(Assign _ _ op l r _)
-     `(set ,(desugar l) ,(desugar ((match op
-                                     ['PLUS_EQUAL (make-Binary 'PLUS)]
-                                     ['MINUS_EQUAL (make-Binary 'MINUS)]
-                                     ['MULT_EQUAL (make-Binary 'MULT)]
-                                     ['DIV_EQUAL (make-Binary 'DIV)]
-                                     ['MOD_EQUAL (make-Binary 'MOD)]
-                                     ['CONCAT_EQUAL (make-Binary 'DOT)]
-                                     [_ cdr]) (cons l r))))]
+     `(set! ,(desugar l) ,(desugar ((match op
+                                      ['PLUS_EQUAL (make-Binary 'PLUS)]
+                                      ['MINUS_EQUAL (make-Binary 'MINUS)]
+                                      ['MULT_EQUAL (make-Binary 'MULT)]
+                                      ['DIV_EQUAL (make-Binary 'DIV)]
+                                      ['MOD_EQUAL (make-Binary 'MOD)]
+                                      ['CONCAT_EQUAL (make-Binary 'DOT)]
+                                      [_ cdr]) (cons l r))))]
     
     [(Binary _ _ op l r _)
      `(,(match op
@@ -78,9 +75,12 @@
     [(FunctionCallParameter _ _ e _ _) (desugar e)]
     
     [(FunctionDcl _ _ _ n a b _)
-     `(set ,(string->symbol n) (λ (,@(map desugar a))
-                                 ,(append (desugar (cons (make-Global n) b))
-                                          (list `(return null) `undef))))]
+     `(set! ,(string->symbol n) (λ (,@(map desugar a))
+                                  ,(append 
+                                    (append (list `begin
+                                                  `(self ,(string->symbol n)))
+                                            (rest (desugar b)))
+                                    (list `(return null) `undef))))]
     
     [(GlobalStmt _ _ l _)
      `(begin ,@(map (lambda (x) `(global ,(desugar x))) l) undef)]
@@ -89,21 +89,19 @@
      `(if ,(desugar c) ,(desugar t) ,(desugar e))]
     
     #;[(Infix _ _ op e _)
-     `(set ,(desugar e) (,(match op
-                            ['INC `inc]
-                            ['DEC `dec]) ,(desugar e)))]
+       `(set! ,(desugar e) (,(match op
+                               ['INC `inc]
+                               ['DEC `dec]) ,(desugar e)))]
     
-    #;[(NamespaceName _ _ _ n _)
-     (define s (string->symbol (first n)))
-     (if (eq? s 'var_dump) `var-dump s)]
+    [(NamespaceName _ _ _ n _) (string->symbol (first n))]
     
     [(ParameterDcl _ _ _ n _ _ _) (string->symbol n)]
     
     #;[(Postfix _ _ op e _)
-     `(begin (set $$_tmp ,(desugar e))
-             (set ,(desugar e) (,(match op
-                                   ['INC `inc]
-                                   ['DEC `dec]) ,(desugar e)))
+     `(begin (set! $$_tmp ,(desugar e))
+             (set! ,(desugar e) (,(match op
+                                    ['INC `inc]
+                                    ['DEC `dec]) ,(desugar e)))
              $$_tmp)]
     
     [(ReturnStmt _ _ e _) `(return ,(desugar e))]
