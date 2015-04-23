@@ -64,7 +64,7 @@
                            ['DOUBLE_CAST `to-double]
                            ['STRING_CAST `to-string]) ,(desugar e))]
     
-    [(EchoStmt _ _ s _) `(echo ,@(map desugar s))]
+    [(EchoStmt _ _ s _) `(echo ,(map desugar s))]
     
     [(ExprStmt _ _ e _) (desugar e)]
     

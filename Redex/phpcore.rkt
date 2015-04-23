@@ -3,6 +3,8 @@
 (require redex
          "phpdelta.rkt")
 
+(provide (all-defined-out))
+
 (define-language L
   (P (<?php e))
   
@@ -32,6 +34,7 @@
      (v ... E e ...)
      (set! x E)
      (begin E e ...)
+     (if E e e)
      (return E)
      (body E)
      (echo (v ... E e ...)))
@@ -145,7 +148,8 @@
    (==> (begin v) v E-BeginFinal)
    
    ; Conditional statement
-   (==> (if e_test e_1 e_2) (if (to-bool e_test) e_1 e_2) E-If)
+   (==> (if v e_1 e_2) (if (to-bool v) e_1 e_2) E-IfConv
+        (side-condition (not (boolean? (term e_test)))))
    (==> (if #t e_1 e_2) e_1 E-IfTrue)
    (==> (if #f e_1 e_2) e_2 E-IfFalse)
    
