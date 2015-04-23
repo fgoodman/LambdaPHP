@@ -10,15 +10,18 @@
   
   (v (λ (x ...) e) boolean number string null undef)
   
-  (op to-bool to-int to-double to-string
-      + - * / %
+  (c to-bool to-int to-double to-string
+     to-number)
+  (op + - * / %
       #\.
       or and === !== == != < <= > >=
-      !
-      to-number)
+      !)
+  (c-op op c)
+  
   (e v
      x
      (op e ...)
+     (c e)
      (e e ...)
      (set! x e)
      
@@ -32,6 +35,7 @@
   
   (E hole
      (op v ... E e ...)
+     (c E)
      (v ... E e ...)
      (set! x E)
      (begin E e ...)
@@ -85,8 +89,8 @@
   [(subst-vars any) any])
 
 (define-metafunction L
-  δ : op v ... -> e
-  [(δ op v ...) ,(δ-apply (term (op v ...)))])
+  δ : c-op v ... -> e
+  [(δ c-op v ...) ,(δ-apply (term (c-op v ...)))])
 
 (define L-reduce
   (reduction-relation
@@ -107,6 +111,9 @@
    
    ; Primitive application
    (==> (op v ...) (δ op v ...) E-Prim)
+   
+   ; Casting
+   (==> (c v) (δ c v) E-Cast)
    
    ; Function application
    (--> (B (σ ...) Σ (in-hole E ((λ (x ...) e) v ...)))
