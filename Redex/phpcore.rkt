@@ -63,8 +63,16 @@
   (i natural))
 
 (define-metafunction L
+  Lift : e -> e
+  [(Lift e) e])
+
+(define-metafunction L
+  ANF : e -> e
+  [(ANF e) e])
+
+(define-metafunction L
   IF : P -> CF
-  [(IF (<?php e)) ("" (()) () e)])
+  [(IF (<?php e)) ("" (()) () (ANF (Lift e)))])
 
 (define-metafunction L
   subst-n : (x any) ... any -> any
