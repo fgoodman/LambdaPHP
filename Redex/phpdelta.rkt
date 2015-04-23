@@ -82,15 +82,45 @@
     [`(to-double ,v) (to-double v)]
     [`(to-string ,v) (to-string v)]
     
-    [`(+ ,v_1 ,v_2) (+ (to-number v_1) (to-number v_2))]
-    [`(- ,v_1 ,v_2) (- (to-number v_1) (to-number v_2))]
-    [`(* ,v_1 ,v_2) (* (to-number v_1) (to-number v_2))]
-    [`(/ ,v_1 ,v_2) (if (= v_2 0) false (+ (to-number v_1) (to-number v_2)))]
-    [`(% ,v_1 ,v_2) (if (= v_2 0) false (+ (to-number v_1) (to-number v_2)))]
+    [`(to-number ,v) (to-number v)]
     
-    [`(#\. ,v_1 ,v_2) (string-append (to-string v_1) (to-string v_2))]
-
-    [`(or ,v_1 ,v_2) (or (to-bool v_1) (to-bool v_2))]
+    [`(+ ,(? number? v_1) ,(? number? v_2)) (+ v_1 v_2)]
+    [`(+ ,v_1 ,v_2) 
+     `(+ ,(if (number? v_1) v_1 `(to-number ,v_1))
+         ,(if (number? v_2) v_2 `(to-number ,v_2)))]
+    
+    [`(- ,(? number? v_1) ,(? number? v_2)) (- v_1 v_2)]
+    [`(- ,v_1 ,v_2) 
+     `(- ,(if (number? v_1) v_1 `(to-number ,v_1))
+         ,(if (number? v_2) v_2 `(to-number ,v_2)))]
+    
+    [`(* ,(? number? v_1) ,(? number? v_2)) (* v_1 v_2)]
+    [`(* ,v_1 ,v_2) 
+     `(* ,(if (number? v_1) v_1 `(to-number ,v_1))
+         ,(if (number? v_2) v_2 `(to-number ,v_2)))]
+    
+    [`(/ ,(? number? v_1) 0) #f]
+    [`(/ ,(? number? v_1) ,(? number? v_2)) (/ v_1 v_2)]
+    [`(/ ,v_1 ,v_2) 
+     `(/ ,(if (number? v_1) v_1 `(to-number ,v_1))
+         ,(if (number? v_2) v_2 `(to-number ,v_2)))]
+    
+    
+    [`(% ,(? number? v_1) 0) #f]
+    [`(% ,(? number? v_1) ,(? number? v_2)) (modulo v_1 v_2)]
+    [`(% ,v_1 ,v_2) 
+     `(% ,(if (number? v_1) v_1 `(to-number ,v_1))
+         ,(if (number? v_2) v_2 `(to-number ,v_2)))]
+    
+    [`(#\. ,(? string? v_1) ,(? string? v_2)) (string-append (to-string v_1) (to-string v_2))]
+    [`(#\. ,v_1 ,v_2) 
+     `(#\. ,(if (string? v_1) v_1 `(to-string ,v_1))
+           ,(if (string? v_2) v_2 `(to-string ,v_2)))]
+    
+    [`(or ,(? boolean? v_1) ,(? boolean? v_2)) (* v_1 v_2)]
+    [`(or ,v_1 ,v_2) 
+     `(or ,(if (boolean? v_1) v_1 `(to-bool ,v_1))
+         ,(if (boolean? v_2) v_2 `(to-bool ,v_2)))]
     [`(and ,v_1 ,v_2) (and (to-bool v_1) (to-bool v_2))]
     [`(=== ,v_1 ,v_2) (eq? v_1 v_2)]
     [`(!== ,v_1 ,v_2) (not (eq? v_1 v_2))]
