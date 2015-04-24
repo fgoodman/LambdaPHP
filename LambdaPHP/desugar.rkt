@@ -77,8 +77,7 @@
     [(FunctionDcl _ _ _ n a b _)
      `(set! ,(string->symbol n) (λ (,@(map desugar a))
                                   ,(append 
-                                    (append (list `begin
-                                                  `(self ,(string->symbol n)))
+                                    (cons `begin
                                             (rest (desugar b)))
                                     (list `(return null) `undef))))]
     
