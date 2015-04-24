@@ -156,8 +156,18 @@
    (==> (c v) (δ c v) E-Cast)
    
    ; Function application
-   (--> (B (σ ...) Σ (in-hole E ((λ (x ...) e) v ...)))
-        (B (() σ ...) Σ (in-hole E (body (subst-n (x v) ... e))))
+   (--> (B (σ ... ((x_1 i_1) ...))
+           ((i_2 v_2) ...)
+           (in-hole E ((λ (x ...) e) v ...)))
+        (B (,(foldr (lambda (a base)
+                      (let ([v (assoc (second a)
+                                      (term ((i_2 v_2) ...)))])
+                        (if (and v (redex-match? L (λ (x_l ...) e_l)
+                                                 (second v)))
+                            (cons a base) base)))
+                    empty (term ((x_1 i_1) ...))) σ ... ((x_1 i_1) ...))
+           ((i_2 v_2) ...)
+           (in-hole E (body (subst-n (x v) ... e))))
         E-β)
    
    ; Variable assignment
@@ -200,13 +210,14 @@
         (side-condition (not (member (term x) (term (x_1 ...))))))
    
    ; Self statement
-   (--> (B (σ_1 (name s ((x_2 i_2) ... (x i) (x_3 i_3) ...)) σ ...)
+   #;(--> (B (σ_1 (name s ((x_2 i_2) ... (x i) (x_3 i_3) ...)) σ ...)
              Σ
              (in-hole E (self x)))
         (B (((x i) . σ_1) s σ ...)
              Σ
              (in-hole E undef))
         E-Self)
+   (--> (B (σ ...) Σ (in-hole E (self x))) (B (σ ...) Σ (in-hole E undef)) E-Self)
    
    ; Sequential statement
    (==> (begin v e_1 e_2 ...) (begin e_1 e_2 ...) E-Begin)
@@ -233,7 +244,10 @@
         E-EchoValue
         (side-condition (not (string? (term v_f)))))
    (--> (B (σ ...) Σ (in-hole E (echo (v_f v_r ...))))
-        (,(string-append (term B)
+        (,(string-append (if (and (number? (term B))
+                                  (= (floor (term B)) (term B)))
+                             (inexact->exact (term B))
+                             (term B))
                          (term v_f)) (σ ...) Σ (in-hole E (echo (v_r ...))))
         E-Echo
         (side-condition (string? (term v_f))))

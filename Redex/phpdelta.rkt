@@ -25,27 +25,28 @@
   (match v
     [#t "1"]
     [#f ""]
-    [(? number?) (number->string v)]
+    [(? number?)
+     (number->string ((if (= (floor v) v) inexact->exact identity) v))]
     [(? string?) v]
     [null ""]))
 
 ; http://php.net/manual/en/language.types.integer.php#language.types.integer.casting
 (define (to-int v)
-   (match v
-     [#t 1]
-     [#f 0]
-     [(? number?) (floor v)]
-     [(? string?) (floor (strtod v))]
-     [null 0]))
+  (match v
+    [#t 1]
+    [#f 0]
+    [(? number?) (floor v)]
+    [(? string?) (floor (strtod v))]
+    [null 0]))
 
 ; http://php.net/manual/en/language.types.float.php#language.types.float.casting
 (define (to-double v)
-   (match v
-     [#t 1.0]
-     [#f 0.0]
-     [(? number?) (* 1.0 v)]
-     [(? string?) (* 1.0 (strtod v))]
-     [null 0.0]))
+  (match v
+    [#t 1.0]
+    [#f 0.0]
+    [(? number?) (* 1.0 v)]
+    [(? string?) (* 1.0 (strtod v))]
+    [null 0.0]))
 
 (define (to-number v)
   (match v
