@@ -17,7 +17,7 @@
     ['BOOL_FALSE #f]
     [(? string?) (string-replace (string-replace p "\"" "") "\'" "")]
     
-    [(? cons?) `(begin ,@(map desugar p) undef)]
+    [(? cons?) `(begin ,@(map desugar p))]
 
     [(Assign _ _ op l r _)
      `(set! ,(desugar l) ,(desugar ((match op
@@ -39,8 +39,8 @@
           
           ['DOT #\.]
           
-          ['LOGICAL_OR `or]
-          ['LOGICAL_AND `and]
+          ['BOOLEAN_OR `or]
+          ['BOOLEAN_AND `and]
           ['IS_IDENTICAL `===]
           ['IS_NOT_IDENTICAL `!==]
           ['IS_EQUAL `==]
@@ -76,11 +76,11 @@
     
     [(FunctionDcl _ _ _ n a b _)
      `(set! ,(string->symbol n) (λ (,@(map desugar a))
-                                  ,(append 
-                                    (cons `begin
-                                            (rest (desugar b)))
-                                    (list `(return null) `undef))))]
-    
+                                  ,(append (cons `begin
+                                                 (rest (desugar b)))
+                                           (list `(return null)
+                                                 `undef))))]
+
     [(GlobalStmt _ _ l _)
      `(begin ,@(map (lambda (x) `(global ,(desugar x))) l) undef)]
     

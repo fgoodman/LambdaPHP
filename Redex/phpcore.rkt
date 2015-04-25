@@ -206,7 +206,7 @@
    
    ; Conditional statement
    (==> (if v e_1 e_2) (if (to-bool v) e_1 e_2) E-IfConv
-        (side-condition (not (boolean? (term e_test)))))
+        (side-condition (not (boolean? (term v)))))
    (==> (if #t e_1 e_2) e_1 E-IfTrue)
    (==> (if #f e_1 e_2) e_2 E-IfFalse)
    
