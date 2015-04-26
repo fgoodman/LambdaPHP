@@ -1,3 +1,4 @@
+![PHP: Bat out of Hell](http://i.imgur.com/qk0sUI1.jpg)
 # LambdaPHP
 Semantics for PHP
 
