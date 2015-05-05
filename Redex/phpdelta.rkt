@@ -1,5 +1,7 @@
 #lang racket
 
+(require file/md5)
+
 (provide δ-apply)
 
 ; http://php.net/is_numeric
@@ -61,6 +63,7 @@
                [`<= string<=?]
                [`> string>?]
                [`>= string>=?]
+               [`!= (compose not string=?)]
                [else string=?]))
   (cond
     [(and (or (equal? v_1 `null) (string? v_1)) (string? v_2))
@@ -164,6 +167,9 @@
     [`(! ,v_1) `(! (to-bool ,v_1))]
     
     [`(- ,(? number? v_1)) (* v_1 -1)]
-    [`(- ,v_1) `(- (to-number v_1))]
+    [`(- ,v_1) `(- (to-number ,v_1))]
+    
+    [`(md5 ,(? string? v_1)) (bytes->string/utf-8 (md5 v_1))]
+    [`(md5 ,v_1) `(md5 (to-string ,v_1))]
    
     [else (error "NYI")]))

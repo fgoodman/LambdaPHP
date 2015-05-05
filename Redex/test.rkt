@@ -39,9 +39,10 @@
   (define inner (lambda (op)
                   (append-map (lambda (x)
                                 (map (lambda (y)
-                                       @string-append{echo @|x| @|op| @|y|; })
+                                       @string-append{echo @|x| @|op| @|y| })
                                      vals))
                               vals)))
+  ;(display (list-ref (append-map inner ops) 149))
   (string-append "<?php " (apply string-append (append-map inner ops))))
 
 (define (generate-unary-operator-tests ops vals)
@@ -51,45 +52,19 @@
                   vals)))
   (string-append "<?php " (apply string-append (append-map inner ops))))
 
-
+; takes long time
 #;(test (generate-binary-operator-tests 
-       (list "+" "-" "*" #|"/"|# #|"%"|# "." "||" "&&" "===" "!==" "==" #|"!="|# "<" "<=" ">" ">=")
+       (list "+" "-" "*" "." "||" "&&" "===" "!==" "==" "!=" "<" "<=" ">" ">=")
        (list "true" "false" "1" "0" "-1" "1.5" "\"1\"" "\"0\"" "\"-1\"" "\"1.5\"" "null" "\"php\"" "\"\"")))
 
-#;(test (generate-unary-operator-tests
-       (list "(bool)" "(int)" "(double)" "(string)" "!" #|"-"|#)
+(test (generate-unary-operator-tests
+       (list "(bool)" "(int)" "(double)" "(string)" "!" "-" "md5")
        (list "true" "false" "1" "0" "-1" "1.5" "1.0" "\"1\"" "\"0\"" "\"-1\"" "\"1.5\"" "\"1.0\"" "null" "\"php\"" "\"\"")))
 
-
-(test @string-append{
-<?php
-
-echo "Hello World!";
-
-echo 1, true, "Hello", null;
-
-echo $n = null; // => null
-
-echo $b1 = true; // => true
-echo $b2 = false; // => false
-
-echo $int1 = 12; // => 12
-echo $int2 = -12; //  => -12
-// $int3 = 012; // octal numbers are not supported (a leading 0 denotes an octal number)
-// $int4 = 0x0F; // hexadecimal numbers are not supported (a leading 0x denotes a hexadecimal number)
-
-echo $float1 = 1.234; // => 1.234
-echo $float2 = 1.2e3; // => 1200.0
-echo $float3 = 7E-10; // => 0.0000007
-echo $float3 = -7E-10; // => -0.0000007
-
-$string = "Bruno"; // => "Bruno"
-$single = 'Hello $string'; // => "Hello $string" (single quotes do not allow embedding out variables)
-$double = "Hello $string"; // => "Hello Bruno" (double quotes allow embedding out variables)
-// nowdocs are not supported
-})
-
-
+(test @string-append{<?php
+echo md5('240610708') == md5('QNKCDZO');
+echo md5('aabg7XSs') == md5('aabC9RqS');
+echo '0010e2' == '1e3';})
 
 (test @string-append{
 <?php
@@ -155,6 +130,13 @@ echo '1.22' > '01.23'; // bool(false)
 echo '1.22.00' > '01.23.00'; // bool(true)
 echo '1-22-00' > '01-23-00'; // bool(true)
 echo (float)'1.22.00' > (float)'01.23.00'; // bool(false)
+})
+
+(test @string-append{
+<?php
+after();
+function before() { echo 'hi'; }
+function after() { before(); }
 })
 
 
@@ -289,4 +271,3 @@ echo (float)'1.22.00' > (float)'01.23.00'; // bool(false)
 (test @string-append{<?php echo 1;})
 (test @string-append{<?php echo false;})
 (test @string-append{<?php echo null;})
-
