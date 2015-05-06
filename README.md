@@ -50,16 +50,19 @@ is supported:
   * Integer: `(int)...`
   * Float: `(float)...`
   * String: `(string)...`
-* For loops
-* Function application
-* Function declaration
-* Global statements
-* If statements
-* Infix increment/decrement
-* Postfix increment/decrement
-* Return statements
-* Ternary test operator
-* While statements
+* Type juggling: `"10 cats" + "1e3" . "hello" - true`
+* For loops: `for ($i = 0; $i < 10; $i += 1) { ... }`
+* While loops: `while (...) { ... }`
+* Function application: `foo(), bar(1, 5, 3)`
+* Function declaration (top-level only): `function bar($x, $y, $z) { ... }`
+* Return statements: `function baz($x) { ... return $x; ... }`
+* Global statements: `function foo() { global $x, $y; ... }`
+* If statements: `if (...) { ... } else if (...) { ... } else { ... }`
+* Ternary test operator: `... ? ... : ...`
+* Built-in functions: `md5`
+* Echo statement: `echo ...`
 
-## Visualizing reduction sequences
-TODO
+## Testing λPHP
+I use both [automated and manual testing](https://github.com/fgoodman/LambdaPHP/Redex/test.rkt). λPHP stores `echo`ed output in a buffer. The `test` function evaluates the provided PHP program and compares the standard output from the PHP interpreter with the λPHP buffer. The `debug` function displays the λPHP evaluation trace for the provided PHP program.
+
+Examples were either created or taken from PHP's documentation comments. λPHP assumes all input is valid PHP 5.5.
